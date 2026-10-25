@@ -1,0 +1,17 @@
+<!-- Drop this into your existing index.html toolbar area -->
+<!-- Add after the brand / keybar or inside .toolbar-right -->
+
+<select id="modelSelect" class="input sm" title="Model" style="min-width:180px">
+  <optgroup label="Local (Ollama)">
+    <option value="ollama:gpt-oss:20b">gpt-oss:20b (local)</option>
+    <option value="ollama:qwen3.6">qwen3.6 (local)</option>
+    <option value="ollama:qwen3.8:27b">qwen3.8:27b (local)</option>
+    <option value="ollama:gemma4:12b">gemma4:12b (local)</option>
+  </optgroup>
+  <optgroup label="Grok (cloud)">
+    <option value="grok-4.20-0309-non-reasoning">Grok 4.20 (lighter)</option>
+    <option value="grok-4.7">Grok 4.7</option>
+    <option value="grok-build">Grok Build</option>
+  </optgroup>
+</select>
+<button type="button" class="btn ghost sm" id="btnRefreshModels" title="Refresh local models">↻</button>

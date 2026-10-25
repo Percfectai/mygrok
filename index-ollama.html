@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MY GROK</title>
+  <link rel="icon" type="image/png" href="/static/logo.png" />
+  <link rel="apple-touch-icon" href="/static/logo.png" />
+  <meta name="theme-color" content="#0a1428" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/app.css" />
+</head>
+<body>
+  <script>
+    (function () {
+      const p = new URLSearchParams(location.search);
+      if (p.get("app") === "1" || p.get("simple") === "1") {
+        document.documentElement.classList.add("app-mode");
+      }
+    })();
+  </script>
+  <div id="app">
+    <!-- AUTH BAR -->
+    <div class="keybar">
+      <div class="brand">
+        <img class="logo" src="/static/logo.png" alt="MY GROK" width="34" height="34"
+             onerror="this.style.display='none';var f=this.nextElementSibling;if(f)f.style.display='grid';" />
+        <span class="logo-fallback" aria-hidden="true">👑</span>
+        <strong>MY GROK</strong>
+        <span class="brand-mode">Conductor</span>
+      </div>
+      <span id="keyStatus" class="pill warn">checking…</span>
+      <span id="ollamaPill" class="pill warn" title="Local Ollama">Ollama · …</span>
+      <span id="wsPill" class="pill">workspace</span>
+      <button type="button" class="btn ghost sm" id="btnRefreshAuth" title="Re-check Grok Build login">↻ Auth</button>
+      <button type="button" class="btn ghost sm" id="btnRefreshOllama" title="Re-check Ollama">↻ Ollama</button>
+      <details class="adv-auth">
+        <summary>Advanced</summary>
+        <label class="key-field">
+          <span>xAI API key (for 🔑 API chats)</span>
+          <input id="apiKeyInput" type="password" placeholder="xai-… optional" autocomplete="off" />
+        </label>
+        <label class="key-field narrow">
+          <span>Bridge token</span>
+          <input id="bridgeTokenInput" type="password" placeholder="optional" autocomplete="off" />
+        </label>
+        <button type="button" class="btn primary sm" id="btnSaveKeys">Save</button>
+      </details>
+    </div>
+
+    <!-- TOOLBAR -->
+    <div class="toolbar">
+      <div class="agent-toggles" id="agentToggles"></div>
+      <div class="toolbar-right">
+        <select id="ollamaModelSelect" class="input sm" title="Local Ollama model" style="min-width:160px"></select>
+        <button type="button" class="btn primary sm" id="btnNewOllama">🦙 New local chat</button>
+        <button type="button" class="btn primary sm" id="btnOpenClaudio" title="Open Claudio with Claude history loaded">Claudio + history</button>
+        <button type="button" class="btn ghost sm" id="btnImportThis">▶ Continue THIS session</button>
+        <button type="button" class="btn ghost sm" id="btnImportAll">Import Grok chats</button>
+        <button type="button" class="btn ghost sm" id="btnImportClaude">Import Claude chats</button>
+        <button type="button" class="btn ghost sm" id="btnToggleBridge" title="Build bridge">Bridge: off</button>
+        <button type="button" class="btn ghost sm" id="btnSettings">⚙</button>
+      </div>
+    </div>
+
+    <div class="shell">
+      <!-- PERSISTENT WORKTREE -->
+      <aside class="worktree" id="worktree" aria-label="Shared worktree">
+        <div class="worktree-head">
+          <h2>Worktree</h2>
+          <button type="button" class="btn ghost sm" id="btnWtRefresh" title="Refresh folder tree">↻</button>
+        </div>
+        <div class="worktree-root" id="wtRoot" title="">~/…</div>
+        <div class="worktree-nav">
+          <button type="button" class="btn ghost sm" id="btnWtUp" title="Up one folder">↑</button>
+          <button type="button" class="btn ghost sm" id="btnWtHome" title="Workspace root">⌂</button>
+          <span class="worktree-path" id="wtPath">.</span>
+        </div>
+        <div class="worktree-list" id="wtList"></div>
+        <pre class="wt-preview" id="wtPreview">Select a folder or file…</pre>
+      </aside>
+
+      <!-- LEFT RAIL -->
+      <aside class="rail left">
+        <div class="rail-tabs">
+          <button type="button" class="rail-tab active" data-left="chats">Chats</button>
+          <button type="button" class="rail-tab" data-left="sessions">Grok Build</button>
+          <button type="button" class="rail-tab" data-left="claude">Claude</button>
+          <button type="button" class="rail-tab" data-left="prompts">Prompts</button>
+          <button type="button" class="rail-tab" data-left="tasks">Tasks</button>
+        </div>
+
+        <section class="rail-panel active" id="panelChats">
+          <button type="button" class="btn primary sm block" id="btnNewChat">+ Build chat</button>
+          <button type="button" class="btn ghost sm block" id="btnNewApiChat" title="Conductor: extensive memory + orchestrate Grok Builds via API key">🔑 Conductor (API)</button>
+          <button type="button" class="btn ghost sm block" id="btnNewOllama">🦙 Local Ollama chat</button>
+          <button type="button" class="btn ghost sm block" id="btnSortDays">Sort chats by day</button>
+          <div id="chatList" class="list"></div>
+        </section>
+
+        <section class="rail-panel" id="panelSessions">
+          <p class="hint">Terminal sessions from <code>~/.grok/sessions</code></p>
+          <button type="button" class="btn primary sm block" id="btnRefreshSessions">Refresh</button>
+          <div id="sessionList" class="list"></div>
+        </section>
+
+        <section class="rail-panel" id="panelClaude">
+          <p class="hint">From <code>~/CLAUDE_CONVERSATION_HISTORY</code> (exported earlier)</p>
+          <button type="button" class="btn primary sm block" id="btnImportClaudeAll">Import all Claude sessions</button>
+          <button type="button" class="btn ghost sm block" id="btnRefreshClaude">Refresh list</button>
+          <div id="claudeList" class="list"></div>
+        </section>
+
+        <section class="rail-panel" id="panelPrompts">
+          <div id="promptList" class="list"></div>
+          <div class="stack-gap">
+            <input id="newPromptTitle" class="input sm" placeholder="Prompt title" />
+            <textarea id="newPromptBody" class="input sm" rows="3" placeholder="Prompt body…"></textarea>
+            <button type="button" class="btn sm" id="btnAddPrompt">Save prompt box</button>
+          </div>
+        </section>
+
+        <section class="rail-panel" id="panelTasks">
+          <div class="row-gap">
+            <input id="taskInput" class="input sm grow" placeholder="New task…" />
+            <select id="taskPriority" class="input sm">
+              <option value="high">High</option>
+              <option value="med" selected>Med</option>
+              <option value="low">Low</option>
+            </select>
+            <button type="button" class="btn primary sm" id="btnAddTask">Add</button>
+          </div>
+          <div id="taskList" class="list"></div>
+        </section>
+      </aside>
+
+      <!-- CENTER -->
+      <main class="main">
+        <header class="chat-head">
+          <div>
+            <h1 id="chatTitle">Select or import a session</h1>
+            <p class="sub" id="chatSub">Type freely — Enter always sends.</p>
+          </div>
+          <div class="row-gap">
+            <select id="chatAgent" class="input sm"></select>
+            <button type="button" class="btn ghost sm" id="btnPin">📌</button>
+            <button type="button" class="btn ghost sm" id="btnDel">🗑</button>
+          </div>
+        </header>
+
+        <div class="interjects" id="interjects"></div>
+        <div class="messages" id="messages"></div>
+
+        <div class="composer">
+          <textarea
+            id="composer"
+            rows="3"
+            placeholder="Message MY GROK… Enter to send · empty composer starts voice"
+            autocomplete="off"
+            spellcheck="true"
+          ></textarea>
+          <span class="sr-only" role="status" id="voiceStatusLive"></span>
+          <div class="composer-bar">
+            <span class="hint composer-status" id="modelHint">model</span>
+            <div class="row-gap">
+              <button type="button" class="btn ghost sm" id="btnQueueBridge">Queue to bridge</button>
+              <button type="button" class="btn primary composer-primary" id="btnSend" data-mode="voice" title="Voice mode (empty) or send (typed)">
+                <span class="send-label">Send ↵</span>
+                <span class="voice-wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+                <span class="send-stop" aria-hidden="true"></span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- RIGHT -->
+      <aside class="rail right">
+        <div class="rail-tabs">
+          <button type="button" class="rail-tab active" data-right="plan">Plan</button>
+          <button type="button" class="rail-tab" data-right="docs">Docs</button>
+          <button type="button" class="rail-tab" data-right="media">Media</button>
+          <button type="button" class="rail-tab" data-right="browser">Web</button>
+        </div>
+
+        <section class="rail-panel active" id="panelPlan">
+          <div id="planList" class="list"></div>
+        </section>
+
+        <section class="rail-panel" id="panelDocs">
+          <div class="row-gap">
+            <button type="button" class="btn ghost sm" id="btnDocsUp">↑</button>
+            <span class="path" id="docsPath">.</span>
+          </div>
+          <div id="docsList" class="list"></div>
+          <pre id="docContent" class="doc-view">Open a file…</pre>
+        </section>
+
+        <section class="rail-panel" id="panelMedia">
+          <p class="hint">JPEG · PNG · ZIP · PPTX-style decks · xAI images. Drop files into <code>MyGrok/examples</code> or upload:</p>
+          <input type="file" id="mediaUpload" class="input sm" />
+          <div id="mediaList" class="media-grid"></div>
+          <div id="mediaPreview" class="media-preview"></div>
+        </section>
+
+        <section class="rail-panel" id="panelBrowser">
+          <div class="row-gap">
+            <input id="browserUrl" class="input sm grow" placeholder="https://…" />
+            <button type="button" class="btn primary sm" id="btnGo">Go</button>
+            <button type="button" class="btn ghost sm" id="btnExt">↗</button>
+          </div>
+          <iframe id="browserFrame" class="browser" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" title="browser"></iframe>
+        </section>
+      </aside>
+    </div>
+  </div>
+
+  <dialog id="settingsModal" class="modal">
+    <form method="dialog" class="modal-card">
+      <h2>Settings</h2>
+      <label>Workspace <input id="setWorkspace" class="input" /></label>
+      <label>Model <input id="setModel" class="input" /></label>
+      <label>Browser home <input id="setBrowserHome" class="input" /></label>
+      <label>Extra system prompt <textarea id="setSystem" class="input" rows="4"></textarea></label>
+      <label class="check"><input type="checkbox" id="setBridge" /> Enable build bridge</label>
+      <label>Bridge URL <input id="setBridgeUrl" class="input" /></label>
+      <button type="button" class="btn primary" id="btnSaveSettings">Save</button>
+      <button type="submit" class="btn ghost" value="cancel">Close</button>
+    </form>
+  </dialog>
+
+  <script src="/static/voice.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
